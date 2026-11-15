@@ -393,6 +393,8 @@ html,body{margin:0;background:#e9edf3;font-family:Lato,system-ui,-apple-system,"
 #phone .btn.sel{background:#e8f5ee;color:#0a7a4b;border-color:#0a7a4b}
 #phone .gal .tr{overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 #phone .gal .tr::-webkit-scrollbar{display:none}#phone .gal .sl{scroll-snap-align:start}
+#phone .gal .sl img,#phone .aph img,#phone .rimg img{display:block;width:100%;height:100%;object-fit:cover}
+#phone .rimg.vehicle-photo img{object-fit:contain}
 #phone .pill2{display:flex;align-items:center;flex:1}
 .cin{width:100%;border:0;background:transparent;font:inherit;color:#111;outline:none;padding:0;min-width:0}
 .cin::placeholder{color:#5f5f5f}
@@ -469,6 +471,81 @@ html,body{margin:0;background:#e9edf3;font-family:Lato,system-ui,-apple-system,"
 <script>(function(){
 'use strict';
 var N=window.NODES, SPARK=window.SPARK, PEOPLE=['Karan','Riya','Arjun','Kabir','Meera','Aditi'];
+var MYRA_PHOTOS={
+ villaExterior:'assets/myra/riverside-villa-exterior.webp',
+ villaLounge:'assets/myra/riverside-villa-lounge.webp',
+ villaBedroom:'assets/myra/riverside-villa-bedroom.webp',
+ hillside:'assets/myra/hillside-homestay-exterior.webp',
+ breakfast:'assets/myra/sattvik-breakfast-cafe.webp',
+ aranya:'assets/myra/aranya-cafe-table.webp',
+ ertiga:'assets/myra/ertiga-style-cab.webp',
+ mpv:'assets/myra/larger-mpv.webp',
+ boat:'assets/myra/river-island-boat.webp',
+ tea:'assets/myra/tea-garden.webp',
+ viewpoint:'assets/myra/sunset-viewpoint.webp',
+ riversideWalk:'assets/myra/riverside-walk.webp'
+};
+function myraPhoto(slot,key,alt){
+ if(!slot)return;
+ var img=document.createElement('img');img.src=MYRA_PHOTOS[key];img.alt=alt;img.loading='lazy';img.decoding='async';
+ var svg=Array.prototype.slice.call(slot.children).filter(function(el){return el.tagName.toLowerCase()==='svg'})[0];
+ if(svg)svg.replaceWith(img);else slot.prepend(img);
+}
+function editPhotoTemplate(key,edit){
+ var node=N[key];if(!node||typeof node.html!=='string')return;
+ var template=document.createElement('template');template.innerHTML=node.html;edit(template.content);node.html=template.innerHTML;
+}
+function setVillaGallery(gallery,property){
+ var track=gallery&&gallery.querySelector('.tr');if(!track)return;
+ var photos=property==='hillside'?[['hillside','Illustrative exterior photo of Hillside Homestay.']]:[
+  ['villaExterior','Illustrative exterior photo of Riverside Villa.'],
+  ['villaLounge','Illustrative lounge photo of Riverside Villa.'],
+  ['villaBedroom','Illustrative bedroom photo of Riverside Villa.']
+ ];
+ var slides=Array.prototype.slice.call(track.children);
+ photos.forEach(function(photo,index){
+  var slide=slides[index];if(!slide){slide=document.createElement('div');slide.className='sl';track.appendChild(slide)}
+  myraPhoto(slide,photo[0],photo[1]);
+ });
+ slides.slice(photos.length).forEach(function(slide){slide.remove()});
+ var counter=gallery.querySelector('.cnt');if(counter)counter.textContent='1 / '+photos.length;
+ var hint=gallery.querySelector('.sw');if(hint&&photos.length===1)hint.remove();
+}
+function prepareMyraPhotos(){
+ ['StayShortlist','StayRefine','StayUpdated','StayArrival','StayArrivalOK','StayDiscussion','StayDiscussion2','StayProposal','ProposalConfirmed','StayChatBooked'].forEach(function(key){
+  editPhotoTemplate(key,function(root){root.querySelectorAll('article.pc').forEach(function(card){
+   var title=card.querySelector('.pn'),gallery=card.querySelector('.gal');if(!title||!gallery)return;
+   var name=title.textContent.trim();if(name==='Riverside Villa')setVillaGallery(gallery,'riverside');else if(name==='Hillside Homestay')setVillaGallery(gallery,'hillside');
+  })});
+ });
+ ['StayDetails','StayProperty'].forEach(function(key){editPhotoTemplate(key,function(root){root.querySelectorAll('.gal').forEach(function(gallery){setVillaGallery(gallery,'riverside')})})});
+ editPhotoTemplate('StayRooms',function(root){var thumb=root.querySelector('.rimg');if(thumb)myraPhoto(thumb,'villaBedroom','Illustrative bedroom photo for the entire Riverside Villa.')});
+ Object.keys(N).forEach(function(key){
+  var html=N[key]&&N[key].html||'';if(html.indexOf('Maruti Suzuki Ertiga')<0&&html.indexOf('Larger MPV')<0)return;
+  editPhotoTemplate(key,function(root){root.querySelectorAll('.rimg').forEach(function(slot){
+   var row=slot.parentElement,title=row&&row.querySelector('.pn'),name=title?title.textContent.toLowerCase():'';
+   if(name.indexOf('maruti suzuki ertiga')>=0){slot.classList.add('vehicle-photo');myraPhoto(slot,'ertiga','Illustrative photo of a Maruti Suzuki Ertiga-style vehicle.')}
+   else if(name.indexOf('larger mpv')>=0){slot.classList.add('vehicle-photo');myraPhoto(slot,'mpv','Illustrative photo of a larger MPV vehicle.')}
+  })});
+ });
+ var activityPhotos=[
+  {match:function(text){return text.indexOf('sattvik')>=0&&text.indexOf('breakfast')>=0},key:'breakfast',alt:'Illustrative photo of Sattvik Café, a station-area breakfast suggestion for Meera.'},
+  {match:function(text){return text.indexOf('guided tea garden visit')>=0},key:'tea',alt:'Illustrative photo of a guided tea garden visit in Assam.'},
+  {match:function(text){return text.indexOf('hilltop viewpoint')>=0},key:'viewpoint',alt:'Illustrative photo of the hilltop sunset viewpoint in Assam.'},
+  {match:function(text){return text.indexOf('river-island boat ride')>=0},key:'boat',alt:'Illustrative photo of a river-island boat ride in Assam.'},
+  {match:function(text){return text.indexOf('aranya pure veg café')>=0},key:'aranya',alt:'Illustrative photo of a table set for six at Aranya Pure Veg Café.'},
+  {match:function(text){return text.indexOf('riverside walk')>=0},key:'riversideWalk',alt:'Illustrative photo of the riverside walk in Assam.'}
+ ];
+ Object.keys(N).forEach(function(key){
+  var html=N[key]&&N[key].html||'';if(html.indexOf('class="aph"')<0)return;
+  editPhotoTemplate(key,function(root){root.querySelectorAll('.ac').forEach(function(card){
+   var slot=card.querySelector('.aph');if(!slot)return;var text=card.textContent.toLowerCase();
+   activityPhotos.some(function(photo){if(!photo.match(text))return false;myraPhoto(slot,photo.key,photo.alt);return true});
+  })});
+ });
+ editPhotoTemplate('ItnActivity',function(root){var slide=root.querySelector('.gal .sl');if(slide)myraPhoto(slide,'riversideWalk','Illustrative lead photo of the riverside walk in Assam.')});
+}
+prepareMyraPhotos();
 var INI={Karan:'K',Riya:'R',Arjun:'A',Kabir:'K',Meera:'M',Aditi:'A'};
 var phone=document.getElementById('phone'), lab=document.getElementById('plabel'), toastEl=document.getElementById('toast');
 var S;
